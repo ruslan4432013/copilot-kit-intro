@@ -81,10 +81,12 @@ const getWeather: ToolDefinition = defineTool({
   },
 });
 
-
 const agent = new BuiltInAgent({
-  model,
-  prompt: "You are a helpful assistant. You can manage a todo list by updating the 'todos' state. Each todo item should have a 'text' (string) and 'done' (boolean) property. Use the state tools to send updates to the frontend.",
+  model: openrouter.chat('anthropic/claude-sonnet-4.6'),
+  prompt: "You are a helpful assistant. " +
+    "You can manage a todo list by updating the 'todos' state. " +
+    "Each todo item should have a 'text' (string) and 'done' (boolean) property. " +
+    "Use the state tools to send updates to the frontend.",
   tools: [getWeather]
 })
 

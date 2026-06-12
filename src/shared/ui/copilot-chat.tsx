@@ -3,7 +3,6 @@
 import {
   CopilotChat,
   useAgent,
-  UseAgentUpdate,
   useConfigureSuggestions,
   useCopilotKit,
   useFrontendTool,
@@ -275,28 +274,18 @@ export function useDemoActions(callbacks?: PageCallbacks) {
       callbacks?.onHeadingChange?.(heading, subheading);
       return `Заголовок изменён на "${heading}"`;
     },
+    render: ({ status, args }) => {
+      if (status !== "complete") {
+        return <p className="text-sm text-violet-400 animate-pulse">✏️ Обновляем заголовок...</p>;
+      }
+      return (
+        <div className="my-2 rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-200">
+          ✏️ Заголовок: <strong>{args.heading}</strong>
+        </div>
+      );
+    },
   });
 
-  useRenderTool(
-    {
-      name: "changeHeading",
-      parameters: z.object({
-        heading: z.string(),
-        subheading: z.string().optional(),
-      }),
-      render: ({ status, parameters }) => {
-        if (status !== "complete") {
-          return <p className="text-sm text-violet-400 animate-pulse">✏️ Обновляем заголовок...</p>;
-        }
-        return (
-          <div className="my-2 rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-200">
-            ✏️ Заголовок: <strong>{parameters.heading}</strong>
-          </div>
-        );
-      },
-    },
-    [],
-  );
 
   // ─── Tool: sendNotification — уведомления вне чата ──────────────
   useFrontendTool({
@@ -459,7 +448,10 @@ export function useDemoActions(callbacks?: PageCallbacks) {
 
   // ─── AI-generated suggestions ──────────────────────────────────
   useConfigureSuggestions({
-    instructions: "Предложи 3 интересных действия, которые пользователь может попросить AI сделать на этой странице. Например: сменить тему/фон, показать рецепт, узнать погоду, обновить статистику, отправить уведомление, запустить конфетти, изменить заголовок. Пиши на русском языке, коротко и интересно.",
+    instructions: `
+    Предложи 3 интересных действия, которые пользователь может попросить AI сделать на этой странице. 
+    Например: сменить тему/фон, показать рецепт, узнать погоду, обновить статистику, отправить уведомление, 
+    запустить конфетти, изменить заголовок. Пиши на русском языке, коротко и интересно.`,
     minSuggestions: 3,
     maxSuggestions: 3,
   });

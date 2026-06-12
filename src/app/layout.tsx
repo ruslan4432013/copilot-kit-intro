@@ -29,7 +29,10 @@ export default function RootLayout({ children }: Props) {
     <body
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-    <CopilotKitProvider showDevConsole={false} runtimeUrl="/api/copilotkit">
+    <CopilotKitProvider
+      showDevConsole={false}
+      runtimeUrl="/api/copilotkit"
+    >
       {children}
     </CopilotKitProvider>
     </body>
