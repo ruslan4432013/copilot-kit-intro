@@ -16,7 +16,10 @@
 # next.js
 /.next/
 /out/
-
+.idea
+.jbeval
+.ai
+.junie
 # production
 /build
 
