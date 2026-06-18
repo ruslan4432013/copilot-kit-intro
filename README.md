@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CopilotKit Demo Project
 
-## Getting Started
+Это демонстрационный проект, созданный для ознакомления с возможностями **CopilotKit** — мощного фреймворка для интеграции AI-ассистентов в React-приложения.
 
-First, run the development server:
+Проект демонстрирует использование Generative UI, кастомных инструментов (Frontend Tools) и глубокую интеграцию ассистента с интерфейсом приложения.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Основные возможности
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+В этом демо реализован AI-ассистент, который не просто общается текстом, но и активно взаимодействует с UI:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **🌤 Умная погода** — Отображение интерактивных карточек погоды.
+- **🍳 Рецепты на лету** — Генерация и визуализация кулинарных рецептов с ингредиентами и шагами.
+- **🎨 Управление темой** — Возможность попросить AI сменить фон или цветовую схему страницы.
+- **📊 Динамический дашборд** — Обновление метрик и статистики через текстовые команды.
+- **🔔 Системные уведомления** — Отправка реальных уведомлений на интерфейс.
+- **🎉 Интерактив** — Запуск анимации конфетти для празднования успехов.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📸 Скриншоты приложения
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Общий вид (Preview)
+Демонстрация основного интерфейса чата и его интеграции в приложение.
+![Preview](assets/preview.png)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Состояние агента (Agent State)
+Визуализация того, как агент управляет состоянием и выполняет действия.
+![Agent State](assets/agent-state.png)
 
-## Deploy on Vercel
+### Использование контекста (Use Agent Context)
+Пример того, как AI использует контекст приложения для принятия решений.
+![Use Agent Context](assets/use-agent-context.png)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Человек в цикле (Human-in-the-loop)
+Демонстрация механизмов подтверждения действий пользователя.
+![Human in the loop](assets/human-in-the-loop.png)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛠 Технологический стек
+
+- **Framework:** [Next.js 15](https://nextjs.org/)
+- **AI Core:** [CopilotKit](https://www.copilotkit.ai/)
+- **Styling:** Tailwind CSS
+- **Components:** Radix UI / Lucide Icons
+
+---
+
+## 🏁 Быстрый старт
+
+1. **Установите зависимости:**
+   ```bash
+   npm install
+   ```
+
+2. **Настройте переменные окружения:**
+   Создайте файл `.env.local` и добавьте туда ваш API ключ (например, `COPILOTCLOUD_API_KEY`).
+
+3. **Запустите проект:**
+   ```bash
+   npm run dev
+   ```
+
+Откройте [http://localhost:3000](http://localhost:3000) в браузере.
