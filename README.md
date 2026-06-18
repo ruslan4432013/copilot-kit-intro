@@ -50,7 +50,16 @@
 - **Framework:** [Next.js 16](https://nextjs.org/)
 - **AI Core:** [CopilotKit](https://www.copilotkit.ai/)
 - **Styling:** Tailwind CSS
-- **Components:** Radix UI / Lucide Icons
+
+---
+
+## ⚙️ Переменные окружения
+
+Для работы проекта необходимо настроить следующие переменные окружения в файле `.env.local`:
+
+- `OPENAI_API_KEY` — Ваш API-ключ для доступа к языковым моделям. В данном демо проект настроен на работу
+  с [OpenRouter](https://openrouter.ai/).
+- `OPENAI_BASE_URL` — Базовый URL для запросов к API. По умолчанию используется `https://openrouter.ai/api/v1`.
 
 ---
 
@@ -62,7 +71,7 @@
    ```
 
 2. **Настройте переменные окружения:**
-   Создайте файл `.env.local` и добавьте туда ваш API ключ (например, `COPILOTCLOUD_API_KEY`).
+   Создайте файл `.env.local` на основе `.env` и добавьте туда ваш API ключ.
 
 3. **Запустите проект:**
    ```bash
