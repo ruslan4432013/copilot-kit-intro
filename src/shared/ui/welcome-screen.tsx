@@ -32,10 +32,10 @@ export function WelcomeScreen({ input, suggestionView, className, ...rest }: Wel
   return (
     <div
       {...rest}
-      className={`relative flex flex-col items-center justify-center min-h-[500px] h-full px-6 py-10 overflow-hidden ${className ?? ""}`}
+      className={`relative flex flex-col items-center justify-center lg:min-h-[500px] h-full px-6 py-10 lg:py-10 pt-16 overflow-hidden ${className ?? ""}`}
     >
       {/* Декоративный фон: анимированные орбы */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden lg:block hidden">
         <motion.div
           aria-hidden
           className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl"
@@ -74,7 +74,7 @@ export function WelcomeScreen({ input, suggestionView, className, ...rest }: Wel
         className="relative z-10 w-full max-w-2xl flex flex-col items-center text-center"
       >
         {/* Бейдж */}
-        <motion.div variants={itemVariants} className="mb-6">
+        <motion.div variants={itemVariants} className="mb-6 lg:block hidden">
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
@@ -88,7 +88,7 @@ export function WelcomeScreen({ input, suggestionView, className, ...rest }: Wel
         </motion.div>
 
         {/* Иконка с градиентом и свечением */}
-        <motion.div variants={itemVariants} className="mb-7 relative">
+        <motion.div variants={itemVariants} className="mb-7 relative lg:block hidden">
           <div
             className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 blur-2xl opacity-50 animate-pulse rounded-full"/>
           <motion.div
@@ -103,7 +103,7 @@ export function WelcomeScreen({ input, suggestionView, className, ...rest }: Wel
         {/* Заголовок */}
         <motion.h1
           variants={itemVariants}
-          className="text-5xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent tracking-tight leading-[1.1]"
+          className="text-4xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent tracking-tight leading-[1.1] lg:block hidden"
         >
           Чем я могу помочь?
         </motion.h1>
@@ -111,7 +111,7 @@ export function WelcomeScreen({ input, suggestionView, className, ...rest }: Wel
         {/* Описание */}
         <motion.p
           variants={itemVariants}
-          className="text-zinc-400 block px-3 mb-10 text-base sm:text-lg leading-relaxed font-medium max-w-lg"
+          className="text-zinc-400 px-3 mb-10 text-base sm:text-lg leading-relaxed font-medium max-w-lg lg:block hidden"
         >
           Ваш персональный ИИ-ассистент готов к работе. Управляйте интерфейсом,
           получайте данные и решайте задачи — просто опишите, что нужно.

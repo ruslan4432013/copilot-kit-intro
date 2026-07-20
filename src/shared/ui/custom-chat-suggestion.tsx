@@ -32,7 +32,7 @@ export function CustomChatSuggestion({
           
           return (
             <motion.button
-              key={suggestion.title || suggestion.message}
+              key={`${suggestion.title ?? ""}-${suggestion.message}-${index}`}
               layout
               initial={{ opacity: 0, scale: 0.9, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

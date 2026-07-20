@@ -26,7 +26,7 @@ export function CustomChatMessageView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-5 space-y-8 scroll-smooth custom-scrollbar">
+    <div className="flex-1 flex flex-col overflow-y-auto p-5 space-y-8 scroll-smooth custom-scrollbar">
       <AnimatePresence initial={false}>
         {agent.messages.map((message, index) => {
           const isUser = message.role === "user";
@@ -48,7 +48,7 @@ export function CustomChatMessageView() {
                 stiffness: 260,
                 damping: 20 
               }}
-              className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+              className={`w-full flex ${isUser ? "justify-end" : "justify-start"}`}
             >
               <div className={`flex flex-col gap-2.5 max-w-[90%] ${isUser ? "items-end" : "items-start"}`}>
                 {/* Аватар и Имя для ассистента и рассуждений */}

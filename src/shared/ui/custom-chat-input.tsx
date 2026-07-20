@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useAgent, UseAgentUpdate, useCopilotKit } from "@copilotkit/react-core/v2";
+import { randomUUID } from "../lib/utils";
 
 
 export function CustomChatInput() {
@@ -16,7 +17,7 @@ export function CustomChatInput() {
   const sendMessage = useCallback(async () => {
     if (!value.trim()) return;
     agent.addMessage({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       role: "user",
       content: value,
     });
@@ -73,7 +74,7 @@ export function CustomChatInput() {
           <div className="flex gap-1 items-center">
             <button
               type="button"
-              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-white/5"
+              className="lg:flex hidden p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-white/5"
               title="Прикрепить файл"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -84,7 +85,7 @@ export function CustomChatInput() {
             </button>
             <button
               type="button"
-              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-white/5"
+              className="lg:flex hidden p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-white/5"
               title="Голосовой ввод"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -98,7 +99,7 @@ export function CustomChatInput() {
             {agent.isRunning && (
               <button
                 onClick={stopAgent}
-                className="flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all border border-red-500/20 text-xs font-medium"
+                className="lg:flex hidden items-center gap-1.5 ml-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all border border-red-500/20 text-xs font-medium"
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"/>
@@ -154,7 +155,7 @@ export function CustomChatInput() {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-2 px-2">
+      <div className="lg:flex hidden justify-between items-center mt-2 px-2">
         <p className="text-[10px] text-zinc-500 opacity-60 font-medium uppercase tracking-wider">
           Shift + Enter для новой строки
         </p>

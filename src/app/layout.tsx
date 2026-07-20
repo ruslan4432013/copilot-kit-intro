@@ -26,6 +26,25 @@ type Props = {
 export default function RootLayout({ children }: Props) {
   return (
     <html lang="en">
+    <head>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+                (function() {
+                  var nativeFetch = window.fetch;
+                  if (nativeFetch && !nativeFetch.__isBound) {
+                    var boundFetch = nativeFetch.bind(window);
+                    boundFetch.__isBound = true;
+                    window.fetch = boundFetch;
+                    if (typeof globalThis !== 'undefined' && globalThis.fetch === nativeFetch) {
+                      globalThis.fetch = boundFetch;
+                    }
+                  }
+                })();
+              `,
+        }}
+      />
+    </head>
     <body
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >

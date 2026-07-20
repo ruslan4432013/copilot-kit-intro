@@ -36,7 +36,8 @@ function WeatherCard({ city, temperature, condition, humidity, wind }: {
   const emoji = conditionEmoji[condition?.toLowerCase()] ?? "🌤️";
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-5 text-white shadow-lg max-w-xs my-2">
+    <div
+      className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-5 text-white shadow-lg w-full max-w-xs my-2">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm opacity-80">Погода</p>
@@ -74,7 +75,8 @@ function RecipeCard({ title, cookTime, servings, difficulty, ingredients, steps,
   const badgeColor = difficultyColor[difficulty?.toLowerCase()] ?? "bg-zinc-500";
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 p-5 text-white shadow-lg max-w-sm my-2">
+    <div
+      className="rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 p-5 text-white shadow-lg w-full max-w-sm my-2">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm opacity-80">Рецепт</p>
@@ -264,25 +266,14 @@ export function useDemoActions(callbacks?: PageCallbacks) {
 
   // ─── Tool: changeHeading — меняет заголовок страницы ─────────────
   useFrontendTool({
-    name: "changeHeading",
-    description: "Изменить заголовок и подзаголовок на странице. Используй когда пользователь просит изменить заголовок, название или описание страницы.",
+    name: "{Название инструмента}",
+    description: "{Описание}",
     parameters: z.object({
       heading: z.string().describe("Новый заголовок страницы"),
-      subheading: z.string().optional().describe("Новый подзаголовок (необязательно)"),
     }),
-    handler: async ({ heading, subheading }) => {
-      callbacks?.onHeadingChange?.(heading, subheading);
-      return `Заголовок изменён на "${heading}"`;
+    handler: async ({ heading }) => {
     },
     render: ({ status, args }) => {
-      if (status !== "complete") {
-        return <p className="text-sm text-violet-400 animate-pulse">✏️ Обновляем заголовок...</p>;
-      }
-      return (
-        <div className="my-2 rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-200">
-          ✏️ Заголовок: <strong>{args.heading}</strong>
-        </div>
-      );
     },
   });
 
@@ -448,6 +439,7 @@ export function useDemoActions(callbacks?: PageCallbacks) {
 
   // ─── AI-generated suggestions ──────────────────────────────────
   useConfigureSuggestions({
+    available: "after-first-message",
     instructions: `
     Предложи 3 интересных действия, которые пользователь может попросить AI сделать на этой странице. 
     Например: сменить тему/фон, показать рецепт, узнать погоду, обновить статистику, отправить уведомление, 
@@ -478,6 +470,14 @@ export function useDemoActions(callbacks?: PageCallbacks) {
 }
 
 
+export const CHAT_SUGGESTIONS = [
+  { title: "🌤️ Погода", message: "Какая погода в Москве?" },
+  { title: "🍕 Рецепт", message: "Покажи рецепт пиццы" },
+  { title: "🎨 Тема", message: "Смени тему оформления на ночную" },
+  { title: "📊 Статистика", message: "Покажи статистику дашборда" },
+  { title: "🎉 Конфетти", message: "Запусти конфетти в честь успеха" },
+];
+
 // ─── Внутренний компонент с агентом (рендерится только когда нет ошибки) ───
 function CopilotChatInner({ callbacks }: {
   callbacks?: PageCallbacks;
@@ -493,21 +493,15 @@ function CopilotChatInner({ callbacks }: {
   // ─── Статические подсказки для пустого чата (WelcomeScreen) ─────
   useConfigureSuggestions({
     available: "before-first-message",
-    suggestions: [
-      { title: "🌤️ Погода", message: "Какая погода в Москве?" },
-      { title: "🍕 Рецепт", message: "Покажи рецепт пиццы" },
-      { title: "🎨 Тема", message: "Смени тему оформления на ночную" },
-      { title: "📊 Статистика", message: "Покажи статистику дашборда" },
-      { title: "🎉 Конфетти", message: "Запусти конфетти в честь успеха" },
-    ],
+    suggestions: CHAT_SUGGESTIONS,
   });
 
 
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 m-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 shadow-2xl shadow-black/40 overflow-hidden [--background:oklch(0.21_0.006_285.885)] [--foreground:oklch(0.985_0_0)] [--border:oklch(0.27_0.006_286)] [--ring:oklch(0.55_0.16_265)]">
+      className="flex flex-col flex-1 min-h-0 m-2 sm:m-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 shadow-2xl shadow-black/40 overflow-hidden [--background:oklch(0.21_0.006_285.885)] [--foreground:oklch(0.985_0_0)] [--border:oklch(0.27_0.006_286)] [--ring:oklch(0.55_0.16_265)]">
       <div
-        className="flex items-center justify-between px-5 py-3 border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur-sm">
+        className="lg:flex hidden items-center justify-between px-5 py-3 border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/>

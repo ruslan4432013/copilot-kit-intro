@@ -189,7 +189,7 @@ function HITLCompanyEditor(props: HITLCompanyEditorProps) {
         className="w-full mb-4 px-3 py-2 text-base rounded-lg border border-violet-200 dark:border-violet-800 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-violet-500 text-zinc-800 dark:text-zinc-100"
         autoFocus
       />
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <button
           onClick={() => onSave(value)}
           className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-all active:scale-95"
@@ -268,7 +268,7 @@ function AgentContextDemo() {
 
       <div className="space-y-4">
         <div
-          className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-zinc-100/50 dark:bg-zinc-900/50 border border-zinc-200/30 dark:border-zinc-700/30">
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-zinc-100/50 dark:bg-zinc-900/50 border border-zinc-200/30 dark:border-zinc-700/30">
           <div>
             <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider mb-1">Пользователь</p>
             <input
@@ -411,6 +411,18 @@ function HumanInTheLoopDemo() {
 }
 
 export default function Home() {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  // Определяем десктоп, чтобы менять расположение и анимацию чата:
+  // справа сбоку на больших экранах и выезжающим снизу на мобильных.
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
   const [state, setState] = useState<PageState>({
     bg: null,
     heading: "✨ CopilotKit Demo",
@@ -419,6 +431,55 @@ export default function Home() {
     stats: defaultStats,
     showConfetti: false,
   });
+
+  // Высота мобильной панели чата в пикселях (null = дефолт 75vh).
+  // Пользователь может менять её, перетаскивая «ручку» пальцем.
+  //
+  // ВАЖНО: высоту меняем императивно через ref прямо на DOM-узле панели,
+  // НЕ через React-состояние. Иначе каждый pointermove перерисовывал бы
+  // весь компонент, пересоздавая callbacks и перерегистрируя инструменты/
+  // подсказки чата, из-за чего содержимое CopilotChat пропадало.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const mobileChatHeightRef = useRef<number | null>(null);
+  const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const getMobileBounds = () => {
+    const vh = window.innerHeight;
+    return { min: vh * 0.3, max: vh * 0.95, vh };
+  };
+
+  const handleHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDesktop) return;
+    e.preventDefault();
+    const { vh } = getMobileBounds();
+    const startHeight = mobileChatHeightRef.current ?? vh * 0.75;
+    dragStateRef.current = { startY: e.clientY, startHeight };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current) return;
+    e.preventDefault();
+    const { min, max } = getMobileBounds();
+    // Движение вверх (меньший clientY) увеличивает высоту панели.
+    const delta = dragStateRef.current.startY - e.clientY;
+    const next = Math.min(max, Math.max(min, dragStateRef.current.startHeight + delta));
+    mobileChatHeightRef.current = next;
+    // Применяем новую высоту напрямую к DOM — без перерисовки React-дерева.
+    if (panelRef.current) {
+      panelRef.current.style.height = `${next}px`;
+    }
+  };
+
+  const handleHandlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current) return;
+    dragStateRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
 
   const [bgLayers, setBgLayers] = useState<{ id: number; color: string }[]>([]);
   const bgIdRef = useRef(0);
@@ -472,7 +533,7 @@ export default function Home() {
   const confettiEmojis = ["🎉", "🎊", "✨", "🥳", "🎈", "💫", "⭐"];
 
   return (
-    <div className="relative flex h-screen overflow-hidden font-sans">
+    <div className="relative flex flex-col h-screen overflow-y-auto font-sans">
       {/* ── Background crossfade layers ──────────────────────────── */}
       <AnimatePresence>
         {bgLayers.map((layer) => (
@@ -525,7 +586,7 @@ export default function Home() {
       </AnimatePresence>
 
       {/* ── Notifications stack ──────────────────────────────────── */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80">
+      <div className="fixed top-20 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 sm:w-80">
         <AnimatePresence mode="popLayout">
           {state.bg && (
             <motion.div
@@ -576,39 +637,48 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
+      <button 
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed top-4 right-4 z-[60] flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-full text-sm font-bold shadow-lg shadow-violet-500/30 transition-all hover:scale-105 active:scale-95"
+      >
+        <span>{isChatOpen ? "✕ Закрыть" : "💬 AI Чат"}</span>
+      </button>
+
       {/* ── Left panel: Dashboard UI ─────────────────────────────── */}
-      <div className="relative z-10 flex-1 flex flex-col p-8 lg:p-12 overflow-y-auto">
+      <div className="relative z-10 flex-1 flex flex-col p-4 sm:p-8 lg:p-12">
         {/* Header */}
-        <header className="mb-10">
-          <AnimatePresence mode="wait">
-            <motion.h1
-              key={state.heading}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="text-4xl lg:text-5xl font-extrabold bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent leading-tight"
-            >
-              {state.heading}
-            </motion.h1>
-          </AnimatePresence>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={state.subheading}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
-              className="mt-2 text-lg text-zinc-500 dark:text-zinc-400"
-            >
-              {state.subheading}
-            </motion.p>
-          </AnimatePresence>
+        <header className="mb-10 flex justify-between items-start">
+          <div>
+            <AnimatePresence mode="wait">
+              <motion.h1
+                key={state.heading}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="text-3xl sm:text-4xl lg:text-5xl font-extrabold bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent leading-tight"
+              >
+                {state.heading}
+              </motion.h1>
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={state.subheading}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+                className="mt-2 text-lg text-zinc-500 dark:text-zinc-400"
+              >
+                {state.subheading}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </header>
 
         {/* Stats grid */}
         <LayoutGroup>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
             {state.stats.map((stat, i) => (
               <motion.div
                 key={stat.id}
@@ -696,14 +766,14 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-6 max-w-4xl">
-          <div style={{ zoom: 2 }}>
+        <div className="flex flex-col gap-6 w-full max-w-4xl">
+          <div className="w-full">
             <AgentContextDemo/>
           </div>
-          <div style={{ zoom: 2 }}>
+          <div className="w-full">
             <HumanInTheLoopDemo/>
           </div>
-          <div style={{ zoom: 2 }}>
+          <div className="w-full">
             <TodoList/>
           </div>
         </div>
@@ -718,12 +788,49 @@ export default function Home() {
         </motion.p>
       </div>
 
-      <div
-        className="relative z-10 w-full max-w-md border-l border-zinc-200/30 dark:border-zinc-700/30 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md flex flex-col h-full overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <CopilotChatUI callbacks={callbacks}/>
-        </div>
-      </div>
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.div
+            key={isDesktop ? "chat-desktop" : "chat-mobile"}
+            id="copilot-chat"
+            initial={isDesktop ? { x: "100%" } : { y: "100%" }}
+            animate={isDesktop ? { x: 0 } : { y: 0 }}
+            exit={isDesktop ? { x: "100%" } : { y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            ref={panelRef}
+            style={
+              !isDesktop && mobileChatHeightRef.current != null
+                ? { height: `${mobileChatHeightRef.current}px` }
+                : undefined
+            }
+            className={
+              isDesktop
+                ? "fixed top-0 right-0 bottom-0 z-50 h-screen w-full max-w-md border-l border-zinc-200/30 dark:border-zinc-700/30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-[-10px_0_40px_rgba(0,0,0,0.12)]"
+                : "fixed bottom-0 left-0 right-0 z-50 w-full h-[75vh] border-t border-zinc-200/30 dark:border-zinc-700/30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl flex flex-col overflow-hidden shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-3xl pt-2"
+            }
+          >
+            {isDesktop ? (
+              <div className="h-16 shrink-0" />
+            ) : (
+              <div
+                onPointerDown={handleHandlePointerDown}
+                onPointerMove={handleHandlePointerMove}
+                onPointerUp={handleHandlePointerUp}
+                onPointerCancel={handleHandlePointerUp}
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Перетащите, чтобы изменить высоту чата"
+                className="shrink-0 flex items-center justify-center w-full pt-3 pb-4 cursor-row-resize touch-none select-none"
+              >
+                <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full" />
+              </div>
+            )}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <CopilotChatUI callbacks={callbacks}/>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

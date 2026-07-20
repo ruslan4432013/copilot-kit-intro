@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy": "export $(grep -v '^#' .env | xargs) && npx vercel --prod"
   },
   "dependencies": {
     "@ag-ui/client": "^0.0.56",
