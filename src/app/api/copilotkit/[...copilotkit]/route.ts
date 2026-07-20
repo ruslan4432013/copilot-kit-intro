@@ -7,7 +7,7 @@ import {
   ToolDefinition
 } from '@copilotkit/runtime/v2';
 import { handle } from 'hono/vercel';
-import { type LanguageModelMiddleware, wrapLanguageModel } from 'ai';
+import { type LanguageModelMiddleware } from 'ai';
 import { LanguageModelV3Usage } from "@ai-sdk/provider";
 import { z } from "zod";
 import { MiddlewareFunction } from "@ag-ui/client";
@@ -15,11 +15,16 @@ import { EventType } from "@ag-ui/core";
 import { Observable } from "rxjs";
 
 
-import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 
-const openrouter = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL || 'https://openrouter.ai/api/v1',
+// proxyapi.ru проксирует Anthropic API по пути /anthropic/v1/messages,
+// поэтому нужен именно Anthropic-провайдер (он ходит на {baseURL}/messages),
+// а не OpenAI-провайдер, который стучится на {baseURL}/chat/completions.
+const proxyBase = (process.env.PROXY_API_BASE_URL || 'https://api.proxyapi.ru/anthropic').replace(/\/+$/, '');
+
+const anthropic = createAnthropic({
+  apiKey: process.env.PROXY_API_KEY,
+  baseURL: proxyBase.endsWith('/v1') ? proxyBase : `${proxyBase}/v1`,
 });
 
 const tokenUsageMiddleware: LanguageModelMiddleware = {
@@ -53,11 +58,6 @@ const tokenUsageMiddleware: LanguageModelMiddleware = {
   },
 };
 
-const model = wrapLanguageModel({
-  model: openrouter.chat('anthropic/claude-sonnet-4.6'),
-  middleware: tokenUsageMiddleware,
-});
-
 
 const schema = z.object({
   city: z.string().describe("The location to get weather for"),
@@ -82,7 +82,7 @@ const getWeather: ToolDefinition = defineTool({
 });
 
 const agent = new BuiltInAgent({
-  model: openrouter.chat('anthropic/claude-sonnet-4.6'),
+  model: anthropic('claude-haiku-4-5-20251001'),
   prompt: "You are a helpful assistant. " +
     "You can manage a todo list by updating the 'todos' state. " +
     "Each todo item should have a 'text' (string) and 'done' (boolean) property. " +

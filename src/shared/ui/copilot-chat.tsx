@@ -266,15 +266,21 @@ export function useDemoActions(callbacks?: PageCallbacks) {
 
   // ─── Tool: changeHeading — меняет заголовок страницы ─────────────
   useFrontendTool({
-    name: "{Название инструмента}",
-    description: "{Описание}",
+    name: "changeHeading",
+    description: "Изменить заголовок страницы. Используй когда пользователь просит поменять, обновить или установить заголовок (и опционально подзаголовок) страницы.",
     parameters: z.object({
       heading: z.string().describe("Новый заголовок страницы"),
+      subheading: z.string().optional().describe("Новый подзаголовок страницы (опционально)"),
     }),
-    handler: async ({ heading }) => {
+    handler: async ({ heading, subheading }) => {
+      callbacks?.onHeadingChange?.(heading, subheading);
+      return `Заголовок изменён на: "${heading}"`;
     },
-    render: ({ status, args }) => {
-    },
+    render: ({ args }) => (
+      <div className="my-2 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
+        <span>Заголовок изменён: <strong>{args?.heading}</strong></span>
+      </div>
+    ),
   });
 
 
