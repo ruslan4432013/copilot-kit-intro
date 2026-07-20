@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { useAgent, UseAgentUpdate, CopilotChatToolCallsView } from "@copilotkit/react-core/v2";
+import {
+  useAgent,
+  UseAgentUpdate,
+  CopilotChatToolCallsView,
+  useRenderActivityMessage,
+} from "@copilotkit/react-core/v2";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,6 +15,10 @@ export function CustomChatMessageView() {
   const { agent } = useAgent({
     updates: [UseAgentUpdate.OnMessagesChanged, UseAgentUpdate.OnRunStatusChanged],
   });
+  // Диспатчит activity-сообщения (например, A2UI-поверхности с
+  // activityType "a2ui-surface") в зарегистрированные activity-рендереры.
+  // Без этого кастомный view печатал бы их content как сырой JSON.
+  const { renderActivityMessage } = useRenderActivityMessage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,6 +45,26 @@ export function CustomChatMessageView() {
           if (message.role === "system") return null;
           // Сообщения роли 'tool' обычно визуализируются через ToolCallsView в сообщении ассистента
           if (message.role === "tool") return null;
+
+          // Activity-сообщения (A2UI-поверхности и т.п.) рендерим через
+          // их собственные рендереры, а не как текст.
+          if (message.role === "activity") {
+            const rendered = renderActivityMessage(message as never);
+            if (!rendered) return null;
+            return (
+              <motion.div
+                key={message.id || index}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.4, type: "spring", stiffness: 260, damping: 20 }}
+                className="w-full flex justify-start"
+              >
+                <div className="w-full max-w-[90%] rounded-2xl overflow-hidden bg-white text-zinc-900 shadow-2xl border border-zinc-800">
+                  {rendered}
+                </div>
+              </motion.div>
+            );
+          }
 
           return (
             <motion.div

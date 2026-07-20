@@ -51,6 +51,7 @@ export default function RootLayout({ children }: Props) {
     <CopilotKitProvider
       showDevConsole={false}
       runtimeUrl="/api/copilotkit"
+      a2ui={{}}
     >
       {children}
     </CopilotKitProvider>

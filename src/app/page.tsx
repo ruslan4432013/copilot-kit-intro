@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { CopilotChatUI } from "@/shared/ui/copilot-chat";
-import { useAgent, useAgentContext, useHumanInTheLoop } from "@copilotkit/react-core/v2";
+import { useAgent, useAgentContext, useCopilotKit, useHumanInTheLoop } from "@copilotkit/react-core/v2";
+import {
+  A2UIProvider,
+  A2UIRenderer,
+  initializeDefaultCatalog,
+  injectStyles,
+  useA2UIActions,
+  useA2UIError,
+  viewerTheme,
+} from "@copilotkit/a2ui-renderer";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +21,9 @@ export type Notification = {
   id: number;
   text: string;
   type: "info" | "success" | "warning" | "error";
+  // Опциональное «тело» push-уведомления: многострочные детали
+  // (например, данные формы из A2UI-виджета).
+  body?: string;
 };
 
 export type StatCard = {
@@ -352,6 +364,265 @@ function AgentContextDemo() {
   );
 }
 
+// ─── A2UI Demo — агент генерирует декларативный UI прямо в чате ────
+const A2UI_EXAMPLE_PROMPTS = [
+  { emoji: "📋", label: "Форма обратной связи", prompt: "Создай через A2UI форму обратной связи с полями: имя, email и сообщение, и кнопкой «Отправить»" },
+  { emoji: "🗳️", label: "Опрос", prompt: "Построй через A2UI небольшой опрос из 3 вопросов о качестве сервиса с вариантами ответов" },
+  { emoji: "🧑‍💼", label: "Карточка профиля", prompt: "Сгенерируй через A2UI карточку профиля пользователя с аватаром, именем, должностью и кнопками «Написать» и «Позвонить»" },
+  { emoji: "🛒", label: "Витрина товаров", prompt: "Покажи через A2UI список из 3 карточек товаров с названием, ценой и кнопкой «В корзину»" },
+  { emoji: "↩️", label: "Форма возврата", prompt: "Создай через A2UI форму возврата товара" },
+];
+
+type A2UIOperation = Record<string, any>;
+
+const getSurfaceIdFromOps = (ops: A2UIOperation[]): string => {
+  for (const op of ops) {
+    const id =
+      op?.createSurface?.surfaceId ??
+      op?.updateComponents?.surfaceId ??
+      op?.updateDataModel?.surfaceId;
+    if (typeof id === "string" && id) return id;
+  }
+  return "default";
+};
+
+// Скармливает операции (createSurface / updateComponents / updateDataModel)
+// в MessageProcessor провайдера. Должен быть потомком A2UIProvider.
+function A2UIOperationsFeeder({ surfaceId, operations }: {
+  surfaceId: string;
+  operations: A2UIOperation[];
+}) {
+  const { processMessages, getSurface } = useA2UIActions();
+  const lastHashRef = useRef("");
+
+  useEffect(() => {
+    const hash = JSON.stringify(operations);
+    if (hash === lastHashRef.current) return;
+    lastHashRef.current = hash;
+    // createSurface дедупим: если поверхность уже создана, повторный
+    // createSurface не переигрываем — только обновления компонентов/данных.
+    processMessages(
+      getSurface(surfaceId)
+        ? (operations.filter((op) => !op?.createSurface) as never)
+        : (operations as never),
+    );
+  }, [processMessages, getSurface, surfaceId, operations]);
+
+  return null;
+}
+
+function A2UISurfaceView({ surfaceId }: { surfaceId: string }) {
+  const error = useA2UIError();
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        Ошибка рендера A2UI: {error}
+      </div>
+    );
+  }
+  return <A2UIRenderer surfaceId={surfaceId} className="w-full" />;
+}
+
+const formatActionContext = (context: Record<string, unknown>): string =>
+  Object.entries(context)
+    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`)
+    .join("\n");
+
+// Живой контейнер: берёт последнюю A2UI-поверхность из сообщений агента
+// и рендерит её прямо на странице (вне чата). Действия пользователя
+// (клики по кнопкам) отправляются обратно агенту через a2uiAction.
+function A2UILiveContainer({ onNotification }: {
+  onNotification?: (text: string, type: Notification["type"], body?: string) => void;
+}) {
+  const { agent } = useAgent();
+  const { copilotkit } = useCopilotKit();
+
+  useEffect(() => {
+    initializeDefaultCatalog();
+    injectStyles();
+  }, []);
+
+  const latestSurfaceMessage = [...agent.messages].reverse().find((m: any) => {
+    return (
+      m.role === "activity" &&
+      m.activityType === "a2ui-surface" &&
+      Array.isArray(m.content?.a2ui_operations) &&
+      m.content.a2ui_operations.length > 0
+    );
+  }) as { content: { a2ui_operations: A2UIOperation[] } } | undefined;
+
+  const handleAction = useCallback(
+    async (message: unknown) => {
+      let outgoing = message as {
+        userAction?: { name?: string; context?: Record<string, unknown> };
+      };
+      const action = outgoing?.userAction;
+
+      // Критичные события обрабатываем детерминированно на клиенте, не
+      // полагаясь на решение LLM: заявку на возврат создаёт наш API.
+      if (action?.name === "submit_return") {
+        try {
+          const res = await fetch("/api/returns", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(action.context ?? {}),
+          });
+          const created = await res.json();
+          // Фронтовый push-тост с данными формы (стек в правом верхнем углу).
+          onNotification?.(
+            `↩️ Возврат оформлен: ${created.requestId}`,
+            "success",
+            formatActionContext(action.context ?? {}),
+          );
+          // Обогащаем context номером заявки: по контракту в промпте агент,
+          // увидев requestId, не станет создавать заявку повторно, а просто
+          // подтвердит её в чате.
+          outgoing = {
+            ...outgoing,
+            userAction: {
+              ...action,
+              context: {
+                ...(action.context ?? {}),
+                requestId: created.requestId,
+                status: "created",
+              },
+            },
+          };
+        } catch {
+          onNotification?.("Не удалось создать заявку на возврат", "error");
+          return;
+        }
+      } else if (action?.name && action.context && Object.keys(action.context).length > 0) {
+        // Любое другое действие из виджета (submit_feedback, add_to_cart...) —
+        // push-тост с его данными.
+        onNotification?.(`🪄 A2UI: ${action.name}`, "info", formatActionContext(action.context));
+      }
+
+      try {
+        copilotkit.setProperties({ ...copilotkit.properties, a2uiAction: outgoing as never });
+        await copilotkit.runAgent({ agent });
+      } finally {
+        // Обязательная зачистка: без неё a2uiAction «прилипает» к properties
+        // и уезжает во все последующие запуски агента.
+        if (copilotkit.properties) {
+          const { a2uiAction, ...rest } = copilotkit.properties as Record<string, unknown>;
+          copilotkit.setProperties(rest as never);
+        }
+      }
+    },
+    [agent, copilotkit, onNotification],
+  );
+
+  if (!latestSurfaceMessage) {
+    return (
+      <div className="p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl text-center">
+        <p className="text-sm text-zinc-500">
+          🪄 Здесь появится интерфейс, сгенерированный агентом.<br/>
+          Попросите его в чате создать форму, опрос или карточки через A2UI.
+        </p>
+      </div>
+    );
+  }
+
+  const operations = latestSurfaceMessage.content.a2ui_operations;
+  const surfaceId = getSurfaceIdFromOps(operations);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="rounded-xl overflow-hidden bg-white text-zinc-900 border border-zinc-200 dark:border-zinc-600 shadow-inner p-4"
+    >
+      {/* key={surfaceId}: новая поверхность → чистый провайдер без старого состояния */}
+      <A2UIProvider key={surfaceId} onAction={handleAction as never} theme={viewerTheme}>
+        <A2UIOperationsFeeder surfaceId={surfaceId} operations={operations} />
+        <A2UISurfaceView surfaceId={surfaceId} />
+      </A2UIProvider>
+    </motion.div>
+  );
+}
+
+function A2UIDemo({ onOpenChat, onNotification }: {
+  onOpenChat: () => void;
+  onNotification?: (text: string, type: Notification["type"], body?: string) => void;
+}) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const handlePromptClick = async (prompt: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    } catch {
+      // clipboard может быть недоступен (http / permissions) — просто открываем чат
+    }
+    onOpenChat();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl bg-white/70 dark:bg-zinc-800/70 backdrop-blur-sm p-6 shadow-md border border-zinc-200/50 dark:border-zinc-700/50 mt-6"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-2xl">🪄</span>
+        <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">A2UI — Agent-to-UI</h3>
+        <span className="ml-auto text-[11px] bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+          New
+        </span>
+      </div>
+
+      <p className="text-base text-zinc-600 dark:text-zinc-400 mb-4">
+        Агент не ограничен заранее написанными компонентами: через протокол A2UI он{" "}
+        <strong className="text-zinc-800 dark:text-zinc-200">генерирует декларативный интерфейс на лету</strong> —
+        формы, карточки, списки, опросы — и стримит его прямо в чат. Кнопки и поля в таком UI интерактивны:
+        действия пользователя возвращаются агенту, и он может обновить уже отрисованный интерфейс.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+        {A2UI_EXAMPLE_PROMPTS.map((item, i) => (
+          <button
+            key={item.label}
+            onClick={() => handlePromptClick(item.prompt, i)}
+            className="group flex items-center gap-3 p-3 rounded-xl bg-zinc-100/60 dark:bg-zinc-900/50 border border-zinc-200/40 dark:border-zinc-700/40 text-left transition-all hover:border-violet-500/50 hover:bg-violet-50 dark:hover:bg-violet-950/20 active:scale-[0.98]"
+          >
+            <span className="text-2xl shrink-0">{item.emoji}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                {item.label}
+              </span>
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                {item.prompt}
+              </span>
+            </span>
+            <span className="shrink-0 text-xs font-medium text-violet-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              {copiedIdx === i ? "✓ Скопировано" : "Копировать →"}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider mb-2">
+          Живая поверхность (рендер вне чата)
+        </p>
+        <A2UILiveContainer onNotification={onNotification}/>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400 dark:text-zinc-500">
+        <span className="uppercase tracking-wider font-medium">
+          createSurface → updateComponents → updateDataModel
+        </span>
+        <span className="hidden sm:inline">·</span>
+        <span>
+          Клик по примеру копирует промпт и открывает чат — сгенерированный UI появится и в чате, и в контейнере выше
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
 function HumanInTheLoopDemo() {
   useHumanInTheLoop({
     name: "humanApprovedCommand",
@@ -497,10 +768,10 @@ export default function Home() {
     },
     onHeadingChange: (heading: string, subheading?: string) =>
       setState((s) => ({ ...s, heading, subheading: subheading ?? s.subheading })),
-    onNotification: (text: string, type: Notification["type"]) =>
+    onNotification: (text: string, type: Notification["type"], body?: string) =>
       setState((s) => ({
         ...s,
-        notifications: [...s.notifications, { id: Date.now(), text, type }],
+        notifications: [...s.notifications, { id: Date.now(), text, type, body }],
       })),
     onStatsUpdate: (stats: StatCard[]) =>
       setState((s) => ({ ...s, stats })),
@@ -586,7 +857,9 @@ export default function Home() {
       </AnimatePresence>
 
       {/* ── Notifications stack ──────────────────────────────────── */}
-      <div className="fixed top-20 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 sm:w-80">
+      {/* z-[70] — выше панели чата (z-50) и кнопки чата (z-[60]), чтобы
+          push-тосты с данными из A2UI-виджета были видны при открытом чате */}
+      <div className="fixed top-20 right-4 left-4 sm:left-auto z-[70] flex flex-col gap-2 sm:w-80">
         <AnimatePresence mode="popLayout">
           {state.bg && (
             <motion.div
@@ -625,7 +898,14 @@ export default function Home() {
               className={`flex items-start gap-2 rounded-xl bg-gradient-to-r ${notifStyles[n.type]} px-4 py-3 text-sm text-white shadow-lg border backdrop-blur-md`}
             >
               <span className="shrink-0 text-base">{notifIcons[n.type]}</span>
-              <span className="flex-1">{n.text}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">{n.text}</p>
+                {n.body && (
+                  <p className="mt-1 text-xs text-white/80 whitespace-pre-line break-words">
+                    {n.body}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => removeNotification(n.id)}
                 className="shrink-0 text-white/50 hover:text-white transition-colors"
@@ -775,6 +1055,12 @@ export default function Home() {
           </div>
           <div className="w-full">
             <TodoList/>
+          </div>
+          <div className="w-full">
+            <A2UIDemo
+              onOpenChat={() => setIsChatOpen(true)}
+              onNotification={callbacks.onNotification}
+            />
           </div>
         </div>
 

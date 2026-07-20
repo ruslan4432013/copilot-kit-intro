@@ -116,7 +116,7 @@ function RecipeCard({ title, cookTime, servings, difficulty, ingredients, steps,
 export type PageCallbacks = {
   onBackgroundChange?: (color: string, label: string) => void;
   onHeadingChange?: (heading: string, subheading?: string) => void;
-  onNotification?: (text: string, type: Notification["type"]) => void;
+  onNotification?: (text: string, type: Notification["type"], body?: string) => void;
   onStatsUpdate?: (stats: StatCard[]) => void;
   onConfetti?: () => void;
 };
@@ -443,13 +443,40 @@ export function useDemoActions(callbacks?: PageCallbacks) {
     [],
   );
 
+  // ─── Render for backend tool: createReturnRequest ──────────────
+  useRenderTool(
+    {
+      name: "createReturnRequest",
+      parameters: z.object({
+        orderId: z.string(),
+        reason: z.string(),
+        comment: z.string().optional(),
+      }),
+      render: ({ status, result }) => {
+        if (status !== "complete") {
+          return <p className="text-sm text-emerald-400 animate-pulse">↩️ Оформляем возврат...</p>;
+        }
+        const data = typeof result === "string" ? JSON.parse(result) : result;
+        return (
+          <div className="my-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 px-4 py-3 text-sm text-emerald-200">
+            <p className="font-semibold">↩️ Возврат оформлен: {data.requestId}</p>
+            <p className="text-xs opacity-80 mt-1">Заказ {data.orderId} · {data.reason}</p>
+            {data.eta && <p className="text-xs opacity-80">{data.eta}</p>}
+          </div>
+        );
+      },
+    },
+    [],
+  );
+
   // ─── AI-generated suggestions ──────────────────────────────────
   useConfigureSuggestions({
     available: "after-first-message",
     instructions: `
     Предложи 3 интересных действия, которые пользователь может попросить AI сделать на этой странице. 
-    Например: сменить тему/фон, показать рецепт, узнать погоду, обновить статистику, отправить уведомление, 
-    запустить конфетти, изменить заголовок. Пиши на русском языке, коротко и интересно.`,
+    Например: сменить тему/фон, показать рецепт, узнать погоду, обновить статистику, отправить уведомление,
+    запустить конфетти, изменить заголовок, сгенерировать интерфейс через A2UI (форму, опрос, карточку).
+    Пиши на русском языке, коротко и интересно.`,
     minSuggestions: 3,
     maxSuggestions: 3,
   });
@@ -482,6 +509,8 @@ export const CHAT_SUGGESTIONS = [
   { title: "🎨 Тема", message: "Смени тему оформления на ночную" },
   { title: "📊 Статистика", message: "Покажи статистику дашборда" },
   { title: "🎉 Конфетти", message: "Запусти конфетти в честь успеха" },
+  { title: "🪄 A2UI форма", message: "Создай через A2UI форму обратной связи с полями имя, email и сообщение" },
+  { title: "↩️ Возврат товара", message: "Создай через A2UI форму возврата товара" },
 ];
 
 // ─── Внутренний компонент с агентом (рендерится только когда нет ошибки) ───
