@@ -23,6 +23,8 @@ const openrouter = createOpenAICompatible({
   name: 'proxyapi-openrouter',
   apiKey: process.env.PROXY_API_KEY,
   baseURL: proxyBase.endsWith('/v1') ? proxyBase : `${proxyBase}/v1`,
+  // Отключаем reasoning у модели (параметр OpenRouter).
+  transformRequestBody: (body) => ({ ...body, reasoning: { enabled: false } }),
 });
 
 
