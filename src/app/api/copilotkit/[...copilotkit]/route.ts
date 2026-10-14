@@ -13,14 +13,14 @@ import { EventType } from "@ag-ui/core";
 import { Observable } from "rxjs";
 
 
-import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 
-// proxyapi.ru проксирует Anthropic API по пути /anthropic/v1/messages,
-// поэтому нужен именно Anthropic-провайдер (он ходит на {baseURL}/messages),
-// а не OpenAI-провайдер, который стучится на {baseURL}/chat/completions.
-const proxyBase = (process.env.PROXY_API_BASE_URL || 'https://api.proxyapi.ru/anthropic').replace(/\/+$/, '');
+// proxyapi.ru проксирует OpenRouter по пути /openrouter/v1/chat/completions,
+// поэтому используем OpenAI-совместимый провайдер (он ходит на {baseURL}/chat/completions).
+const proxyBase = (process.env.PROXY_API_BASE_URL || 'https://api.proxyapi.ru/openrouter').replace(/\/+$/, '');
 
-const anthropic = createAnthropic({
+const openrouter = createOpenAICompatible({
+  name: 'proxyapi-openrouter',
   apiKey: process.env.PROXY_API_KEY,
   baseURL: proxyBase.endsWith('/v1') ? proxyBase : `${proxyBase}/v1`,
 });
@@ -75,7 +75,7 @@ const createReturnRequest: ToolDefinition = defineTool({
 });
 
 const agent = new BuiltInAgent({
-  model: anthropic('claude-haiku-4-5-20251001'),
+  model: openrouter('z-ai/glm-5-turbo'),
   prompt: "You are a helpful assistant. " +
     "You can manage a todo list by updating the 'todos' state. " +
     "Each todo item should have a 'text' (string) and 'done' (boolean) property. " +
